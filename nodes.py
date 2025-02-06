@@ -1,8 +1,5 @@
-import torch
 import random
-import librosa
 import zipfile
-import torchaudio
 import numpy as np
 import os,sys
 import folder_paths
@@ -17,17 +14,11 @@ cache_pretrained_models = os.path.join(folder_paths.cache_dir,"CosyVoice")
 if not os.path.exists(pretrained_models):
     os.makedirs(pretrained_models, exist_ok=True)
 
-from modelscope import snapshot_download
-
-import ffmpeg
-import audiosegment
-from srt import parse as SrtPare
-from cosyvoice.cli.cosyvoice import CosyVoice
-
 sft_spk_list = ['中文女', '中文男', '日语男', '粤语女', '英文女', '英文男', '韩语女']
 inference_mode_list = ['预训练音色', '3s极速复刻', '跨语种复刻', '自然语言控制']
 
 def set_all_random_seed(seed):
+    import torch
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -36,6 +27,8 @@ def set_all_random_seed(seed):
 max_val = 0.8
 prompt_sr, target_sr = 16000, 22050
 def postprocess(speech, top_db=60, hop_length=220, win_length=440):
+    import librosa
+    import torch
     speech, _ = librosa.effects.trim(
         speech, top_db=top_db,
         frame_length=win_length,
@@ -47,6 +40,7 @@ def postprocess(speech, top_db=60, hop_length=220, win_length=440):
     return speech
 
 def speed_change(input_audio, speed, sr):
+    import ffmpeg
     # 检查输入数据类型和声道数
     if input_audio.dtype != np.int16:
         raise ValueError("输入音频数据类型必须为 np.int16")
@@ -124,6 +118,10 @@ class CosyVoiceNode:
 
     def generate(self,tts_text,speed,inference_mode,sft_dropdown,seed,
                  prompt_text=None,prompt_wav=None,instruct_text=None):
+        import torchaudio
+        from modelscope import snapshot_download
+        from cosyvoice.cli.cosyvoice import CosyVoice
+        import torch
         t0 = ttime()
         if inference_mode == '自然语言控制':
             model_dir = os.path.join(pretrained_models,"CosyVoice-300M-Instruct")
@@ -225,6 +223,12 @@ class CosyVoiceDubbingNode:
     CATEGORY = "AIFSH_CosyVoice"
 
     def generate(self,tts_srt,prompt_wav,language,if_single,seed,prompt_srt=None):
+        import torchaudio
+        from modelscope import snapshot_download
+        import audiosegment
+        from srt import parse as SrtPare
+        from cosyvoice.cli.cosyvoice import CosyVoice
+        import torch
         model_dir = os.path.join(pretrained_models,"CosyVoice-300M")
         if os.path.exists(cache_pretrained_models):
             model_dir = os.path.join(cache_pretrained_models,"CosyVoice-300M")
